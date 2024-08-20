@@ -7,8 +7,37 @@ import (
 	"time"
 )
 
-// NewProducer creates a new Kafka producer based on the provided configuration.
-func NewProducer(brokers []string) (*kafka.Producer, error) {
+type Producer interface {
+	ProduceMessage(topic string, key []byte, value []byte) error
+	Close()
+	GetKafkaProducer() *kafka.Producer
+}
+
+type kafkaProducer struct {
+	Producer *kafka.Producer
+}
+
+func (p *kafkaProducer) ProduceMessage(topic string, key []byte, value []byte) error {
+
+	message := &kafka.Message{
+		TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny},
+		Key:            key,
+		Value:          value,
+	}
+
+	return p.Producer.Produce(message, nil)
+}
+
+func (p *kafkaProducer) Close() {
+	p.Producer.Close()
+	log.Println("Kafka producer closed")
+}
+
+func (p *kafkaProducer) GetKafkaProducer() *kafka.Producer {
+	return p.Producer
+}
+
+func NewProducer(brokers []string) (Producer, error) {
 
 	var (
 		producer *kafka.Producer
@@ -19,15 +48,15 @@ func NewProducer(brokers []string) (*kafka.Producer, error) {
 
 	kafkaConfigMap := producerConfig.ToKafkaConfigMap()
 
-	//Todo: For ile burada döngüsel bir yapı kurgulanabilir.Hata mekaniazmasına karşın.
 	producer, err = kafka.NewProducer(kafkaConfigMap)
 	if err != nil {
 		log.Printf("Error occurred when creating producer: %v", err)
-		//Todo: Özelleştirilmiş error bas
 		time.Sleep(5 * time.Second)
 	}
-	//Todo: Log mekanizması inşa edebilirsin
+
 	log.Printf("Created Producer %v\n", producer)
 
-	return producer, err
+	return &kafkaProducer{
+		Producer: producer,
+	}, nil
 }

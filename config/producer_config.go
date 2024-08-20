@@ -8,7 +8,6 @@ import (
 	"time"
 )
 
-// KafkaProducerConfig holds the configuration values for the Kafka producer.
 type KafkaProducerConfig struct {
 	Brokers           []string
 	AcknowledgeType   string
@@ -16,7 +15,6 @@ type KafkaProducerConfig struct {
 	DeliveryTimeoutMs time.Duration
 }
 
-// NewKafkaProducerConfig creates a new KafkaProducerConfig with default values.
 func NewKafkaProducerConfig(brokers []string) *KafkaProducerConfig {
 	return &KafkaProducerConfig{
 		Brokers:           brokers,
@@ -26,7 +24,6 @@ func NewKafkaProducerConfig(brokers []string) *KafkaProducerConfig {
 	}
 }
 
-// ToKafkaConfigMap converts KafkaProducerConfig to a kafka.ConfigMap.
 // Todo: Burayı daha güzel hale getirebilirsin
 func (config *KafkaProducerConfig) ToKafkaConfigMap() *kafka.ConfigMap {
 	return &kafka.ConfigMap{

@@ -2,19 +2,19 @@ package kafka_admin
 
 import (
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
+	"karaca-kafka/producer"
 	"log"
 	"time"
 )
 
-// NewAdminFromProducer creates a new Kafka admin client  based on the provided producer configuration.
-func NewAdminFromProducer(producer *kafka.Producer) (*kafka.AdminClient, error) {
+func NewAdminFromProducer(producer producer.Producer) (*kafka.AdminClient, error) {
 
 	var (
 		kafkaAdmin *kafka.AdminClient
 		err        error
 	)
 
-	kafkaAdmin, err = kafka.NewAdminClientFromProducer(producer)
+	kafkaAdmin, err = kafka.NewAdminClientFromProducer(producer.GetKafkaProducer())
 	if err != nil {
 		log.Printf("Error occurred when creating admin client: %v", err)
 		time.Sleep(5 * time.Second)

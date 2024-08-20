@@ -8,7 +8,6 @@ import (
 	"time"
 )
 
-// KafkaReaderConfig holds the configuration values for the Kafka consumer (reader).
 type KafkaReaderConfig struct {
 	Brokers               []string
 	GroupID               string
@@ -21,7 +20,6 @@ type KafkaReaderConfig struct {
 	ClientID              string
 }
 
-// NewKafkaReaderConfig creates a new KafkaReaderConfig with default values.
 func NewKafkaReaderConfig(brokers []string, groupID string) *KafkaReaderConfig {
 	return &KafkaReaderConfig{
 		Brokers:               brokers,
@@ -36,7 +34,6 @@ func NewKafkaReaderConfig(brokers []string, groupID string) *KafkaReaderConfig {
 	}
 }
 
-// ToKafkaConfigMap converts KafkaReaderConfig to a kafka.ConfigMap.
 func (config *KafkaReaderConfig) ToKafkaConfigMap() *kafka.ConfigMap {
 	return &kafka.ConfigMap{
 		"bootstrap.servers":        strings.Join(config.Brokers, ","),

@@ -2,6 +2,7 @@ package consumer
 
 import (
 	"context"
+	"fmt"
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"karaca-kafka/config"
 	"karaca-kafka/kafka_admin"
@@ -13,7 +14,11 @@ import (
 
 type handler func(message kafka_message.KafkaMessage) error
 
-type Consumer struct {
+type Consumer interface {
+	Unsubscribe()
+}
+
+type kafkaConsumer struct {
 	Context     context.Context
 	AdminClient *kafka.AdminClient
 	Producer    *kafka.Producer
@@ -23,7 +28,11 @@ type Consumer struct {
 	IsClosed    bool
 }
 
-func NewKafkaConsumer(ctx context.Context, consumerConfig config.ConsumerConfig, brokers []string) *Consumer {
+func (c *kafkaConsumer) Unsubscribe() {
+	fmt.Println("Kafka consumer closed")
+}
+
+func NewKafkaConsumer(ctx context.Context, consumerConfig config.ConsumerConfig, brokers []string) Consumer {
 
 	var (
 		consumer *kafka.Consumer
@@ -31,20 +40,28 @@ func NewKafkaConsumer(ctx context.Context, consumerConfig config.ConsumerConfig,
 	)
 
 	kafkaProducer, err := producer.NewProducer(brokers)
-	kafkaAdmin, err := kafka_admin.NewAdminFromProducer(kafkaProducer)
+	if err != nil {
+		log.Printf("Error occurred when creating producer: %v", err)
+	}
 
-	readerConfig := config.NewKafkaProducerConfig(brokers)
+	kafkaAdmin, err := kafka_admin.NewAdminFromProducer(kafkaProducer)
+	if err != nil {
+		log.Printf("Error occurred when creating admin client: %v", err)
+	}
+
+	readerConfig := config.NewKafkaReaderConfig(brokers, consumerConfig.AppName)
 	readerConfigMap := readerConfig.ToKafkaConfigMap()
 
-	for consumer, err = kafka.NewConsumer(readerConfigMap); err != nil; {
+	consumer, err = kafka.NewConsumer(readerConfigMap)
+	if err != nil {
 		log.Printf("Error occurred when creating consumer: %v", err)
 		time.Sleep(5 * time.Second)
 	}
 
-	return &Consumer{
+	return &kafkaConsumer{
 		Context:     ctx,
 		AdminClient: kafkaAdmin,
-		Producer:    kafkaProducer,
+		Producer:    kafkaProducer.GetKafkaProducer(),
 		Consumer:    consumer,
 		Config:      consumerConfig,
 		IsClosed:    false,
