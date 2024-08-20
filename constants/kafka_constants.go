@@ -29,3 +29,8 @@ const (
 	// DefaultDeliveryTimeoutMs specifies the default delivery timeout in milliseconds.
 	DefaultDeliveryTimeoutMs = 10 // in seconds
 )
+
+const (
+	AutoOffsetResetTypeEarliest string = "earliest"
+	AutoOffsetResetTypeLatest   string = "latest"
+)

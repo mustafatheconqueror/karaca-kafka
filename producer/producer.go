@@ -19,7 +19,7 @@ func NewProducer(brokers []string) (*kafka.Producer, error) {
 
 	kafkaConfigMap := producerConfig.ToKafkaConfigMap()
 
-	//Todo: For ile burada döngüsel bir yapı kurgulanabilir.
+	//Todo: For ile burada döngüsel bir yapı kurgulanabilir.Hata mekaniazmasına karşın.
 	producer, err = kafka.NewProducer(kafkaConfigMap)
 	if err != nil {
 		log.Printf("Error occurred when creating producer: %v", err)
