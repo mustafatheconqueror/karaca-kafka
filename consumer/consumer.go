@@ -60,7 +60,7 @@ func NewKafkaConsumer(ctx context.Context, consumerConfig config.ConsumerConfig,
 
 	return &kafkaConsumer{
 		Context:     ctx,
-		AdminClient: kafkaAdmin,
+		AdminClient: kafkaAdmin.GetKafkaAdmin(),
 		Producer:    kafkaProducer.GetKafkaProducer(),
 		Consumer:    consumer,
 		Config:      consumerConfig,
