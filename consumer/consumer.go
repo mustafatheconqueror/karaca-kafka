@@ -14,6 +14,7 @@ import (
 	"os/signal"
 	"runtime"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 )
@@ -22,6 +23,8 @@ type handler func(message kafka_message.KafkaMessage) error
 
 type Consumer interface {
 	CreateTopics() []string
+	EnsureTopicsExist() error
+	SubscribeToTopics() error
 	CreateMainTopic(topic string) error
 	CreateRetryTopic(topic string) error
 	CreateErrorTopic(topic string) error
@@ -31,7 +34,7 @@ type Consumer interface {
 	Close()
 	createTopicIfNotExist(topic string, numPartitions int, replicationFactor int, retention int) error
 	MarkAsClosed()
-	PublishMessageToDeadTopic(ctx context.Context, message kafka.Message, r any, deadTopicName string)
+	PublishMessageToRetryTopic(ctx context.Context, message kafka.Message, r any, deadTopicName string)
 }
 
 type kafkaConsumer struct {
@@ -49,16 +52,21 @@ func (c *kafkaConsumer) StartConsume(handler handler) error {
 	go c.Close()
 
 	c.Handler = handler
-	var err error
 
-	topicsToSubscribe := c.CreateTopics()
-
-	for err = c.Consumer.SubscribeTopics(topicsToSubscribe, nil); err != nil; {
-		c.Logger.Printf("Error occurred when consumer subscribe topics: %v", err)
-		time.Sleep(5 * time.Second)
+	err := c.EnsureTopicsExist()
+	if err != nil {
+		return err
 	}
 
-	var message *kafka.Message
+	err = c.SubscribeToTopics()
+	if err != nil {
+		return err
+	}
+
+	var (
+		message *kafka.Message
+	)
+
 	for {
 		if c.IsClosed {
 			c.Logger.Println("Marked IsClosed true so consumer closing and returning...")
@@ -83,26 +91,71 @@ func (c *kafkaConsumer) StartConsume(handler handler) error {
 	}
 }
 
-func (c *kafkaConsumer) CreateTopics() []string {
+func (c *kafkaConsumer) EnsureTopicsExist() error {
+	var err error
 
+	mainTopicName := c.Config.Topics[0]
+
+	retryTopicName := c.generateRetryTopicName(mainTopicName)
+	errorTopicName := c.generateErrorTopicName(mainTopicName)
+	deadTopicName := c.generateDeadTopicName(mainTopicName)
+
+	err = c.CreateRetryTopic(retryTopicName)
+	if err != nil {
+		c.Logger.Printf("Error occurred when creating retry topic: %v", err)
+		return err
+	}
+
+	err = c.CreateErrorTopic(errorTopicName)
+	if err != nil {
+		c.Logger.Printf("Error occurred when creating error topic: %v", err)
+		return err
+	}
+
+	err = c.CreateDeadTopic(deadTopicName)
+	if err != nil {
+		c.Logger.Printf("Error occurred when creating dead topic: %v", err)
+		return err
+	}
+
+	return nil
+}
+
+func (c *kafkaConsumer) SubscribeToTopics() error {
+	var err error
 	var topicsToSubscribe []string
 
-	mainTopicName := c.Config.AppName + constants.MainSuffix
+	retryTopicName := c.Config.AppName + constants.RetrySuffix
+
+	topicsToSubscribe = append(topicsToSubscribe, c.Config.Topics...)
+	topicsToSubscribe = append(topicsToSubscribe, retryTopicName)
+
+	err = c.Consumer.SubscribeTopics(topicsToSubscribe, nil)
+	if err != nil {
+		c.Logger.Printf("Error occurred when subscribing to topics: %v", err)
+		return err
+	}
+
+	return nil
+}
+
+func (c *kafkaConsumer) CreateTopics() []string {
+	//Todo: Subscribe topics diye bir metoda böl, topicleri create ettiğini başka yerde yap.
+	var topicsToSubscribe []string
+
 	retryTopicName := c.Config.AppName + constants.RetrySuffix
 	errorTopicName := c.Config.AppName + constants.ErrorSuffix
 	deadTopicName := c.Config.AppName + constants.DeadSuffix
 
-	for err := c.CreateMainTopic(mainTopicName); err != nil; {
-		c.Logger.Printf("Error occurred when creating main topic: %v", err)
-		time.Sleep(5 * time.Second)
-	}
-	topicsToSubscribe = append(topicsToSubscribe, mainTopicName)
+	topicsToSubscribe = append(topicsToSubscribe, c.Config.Topics...)
+	topicsToSubscribe = append(topicsToSubscribe, retryTopicName)
 
+	//todo: retry topici yoksa ne olacak :)
+	//todo: buraya bir sonsuz döngü yapılmış burayı düzelt.
 	for err := c.CreateRetryTopic(retryTopicName); err != nil; {
 		c.Logger.Printf("Error occurred when creating retry topic: %v", err)
 		time.Sleep(5 * time.Second)
 	}
-	topicsToSubscribe = append(topicsToSubscribe, retryTopicName)
 
 	for err := c.CreateErrorTopic(errorTopicName); err != nil; {
 		c.Logger.Printf("Error occurred when creating error topic: %v", err)
@@ -127,8 +180,8 @@ func (c *kafkaConsumer) handle(message *kafka.Message) {
 
 			kafka_message.IncrementRetryCount(message)
 
-			deadTopicName := c.Config.AppName + constants.DeadSuffix
-			c.PublishMessageToDeadTopic(c.Context, *message, r, deadTopicName)
+			retryTopicName := c.Config.AppName + constants.RetrySuffix
+			c.PublishMessageToRetryTopic(c.Context, *message, r, retryTopicName)
 		}
 	}()
 
@@ -198,11 +251,11 @@ func (c *kafkaConsumer) MarkAsClosed() {
 	c.Logger.Printf("%s consumer marked as closed", c.Config.AppName)
 }
 
-func (c *kafkaConsumer) PublishMessageToDeadTopic(
+func (c *kafkaConsumer) PublishMessageToRetryTopic(
 	ctx context.Context,
 	message kafka.Message,
 	r any,
-	deadTopicName string) {
+	retryTopicName string) {
 
 	var (
 		ok           bool
@@ -220,8 +273,8 @@ func (c *kafkaConsumer) PublishMessageToDeadTopic(
 	length := runtime.Stack(stack, false)
 	retryCount := kafka_message.RetryCount(message.Headers)
 
-	deadMessage := prepareDeadMessage(message, retryCount, err,
-		fmt.Sprintf("[Exception Recover] %v %s\n", err, stack[:length]), deadTopicName)
+	retryMessage := prepareRetryMessage(message, retryCount, err,
+		fmt.Sprintf("[Exception Recover] %v %s\n", err, stack[:length]), retryTopicName)
 
 	for kafkaMessage == nil || kafkaMessage.TopicPartition.Error != nil {
 		if kafkaMessage != nil && kafkaMessage.TopicPartition.Error != nil {
@@ -229,7 +282,7 @@ func (c *kafkaConsumer) PublishMessageToDeadTopic(
 			time.Sleep(5 * time.Second)
 		}
 
-		for err = c.Producer.Produce(&deadMessage, deliveryChan); err != nil; {
+		for err = c.Producer.Produce(&retryMessage, deliveryChan); err != nil; {
 			c.Logger.Printf("Error occurred when producing dead message: %v", err)
 			time.Sleep(5 * time.Second)
 		}
@@ -252,7 +305,7 @@ func (c *kafkaConsumer) PublishMessageToDeadTopic(
 	c.Logger.Printf("CommitMessage executed for CorrelationId: %s", kafka_message.CorrelationId(message.Headers))
 }
 
-func prepareDeadMessage(message kafka.Message, retryCount int, err error, stackTracing string, topicName string) kafka.Message {
+func prepareRetryMessage(message kafka.Message, retryCount int, err error, stackTracing string, topicName string) kafka.Message {
 	var headers []kafka.Header
 
 	timeNow := time.Now().UTC()
@@ -326,15 +379,33 @@ func prepareDeadMessage(message kafka.Message, retryCount int, err error, stackT
 		Value:          message.Value,
 	}
 }
+func removeMainSuffix(topic string) string {
+	return strings.TrimSuffix(topic, constants.MainSuffix)
+}
 
-func NewKafkaConsumer(ctx context.Context, consumerConfig config.ConsumerConfig, brokers []string) Consumer {
+func (c *kafkaConsumer) generateRetryTopicName(mainTopic string) string {
+	cleanTopicName := removeMainSuffix(mainTopic)
+	return fmt.Sprintf("%s_%s_retry", cleanTopicName, c.Config.AppName)
+}
+
+func (c *kafkaConsumer) generateErrorTopicName(mainTopic string) string {
+	cleanTopicName := removeMainSuffix(mainTopic)
+	return fmt.Sprintf("%s_%s_error", cleanTopicName, c.Config.AppName)
+}
+
+func (c *kafkaConsumer) generateDeadTopicName(mainTopic string) string {
+	cleanTopicName := removeMainSuffix(mainTopic)
+	return fmt.Sprintf("%s_%s_dead", cleanTopicName, c.Config.AppName)
+}
+
+func NewKafkaConsumer(ctx context.Context, consumerConfig config.ConsumerConfig) Consumer {
 
 	var (
 		consumer *kafka.Consumer
 		err      error
 	)
 
-	kafkaProducer, err := producer.NewProducer(brokers)
+	kafkaProducer, err := producer.NewProducer(consumerConfig.Brokers)
 	if err != nil {
 		log.Printf("Error occurred when creating producer: %v", err)
 	}
@@ -344,7 +415,7 @@ func NewKafkaConsumer(ctx context.Context, consumerConfig config.ConsumerConfig,
 		log.Printf("Error occurred when creating admin client: %v", err)
 	}
 
-	readerConfig := config.NewKafkaReaderConfig(brokers, consumerConfig.AppName)
+	readerConfig := config.NewKafkaReaderConfig(consumerConfig.Brokers, consumerConfig.AppName)
 	readerConfigMap := readerConfig.ToKafkaConfigMap()
 
 	consumer, err = kafka.NewConsumer(readerConfigMap)
