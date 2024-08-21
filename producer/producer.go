@@ -2,7 +2,7 @@ package producer
 
 import (
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
-	"karaca-kafka/config"
+	"github.com/mustafatheconqueror/karaca-kafka/config"
 	"log"
 	"time"
 )

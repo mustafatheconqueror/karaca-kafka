@@ -2,7 +2,7 @@ package kafka_admin
 
 import (
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
-	"karaca-kafka/producer"
+	"github.com/mustafatheconqueror/karaca-kafka/producer"
 	"log"
 )
 

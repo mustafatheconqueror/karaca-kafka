@@ -3,7 +3,7 @@ package config
 import (
 	"fmt"
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
-	"karaca-kafka/constants"
+	"github.com/mustafatheconqueror/karaca-kafka/constants"
 	"strings"
 	"time"
 )

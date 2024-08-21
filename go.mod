@@ -1,4 +1,4 @@
-module karaca-kafka
+module github.com/mustafatheconqueror/karaca-kafka
 
 go 1.23.0
 

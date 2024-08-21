@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
-	"karaca-kafka/config"
-	"karaca-kafka/constants"
-	"karaca-kafka/kafka_admin"
-	"karaca-kafka/kafka_message"
-	"karaca-kafka/producer"
+	"github.com/mustafatheconqueror/karaca-kafka/config"
+	"github.com/mustafatheconqueror/karaca-kafka/constants"
+	"github.com/mustafatheconqueror/karaca-kafka/kafka_admin"
+	"github.com/mustafatheconqueror/karaca-kafka/kafka_message"
+	"github.com/mustafatheconqueror/karaca-kafka/producer"
 	"log"
 	"os"
 	"os/signal"
@@ -21,7 +21,6 @@ import (
 type handler func(message kafka_message.KafkaMessage) error
 
 type Consumer interface {
-	Unsubscribe()
 	CreateTopics() []string
 	CreateMainTopic(topic string) error
 	CreateRetryTopic(topic string) error
@@ -44,10 +43,6 @@ type kafkaConsumer struct {
 	Handler     handler
 	IsClosed    bool
 	Logger      *log.Logger
-}
-
-func (c *kafkaConsumer) Unsubscribe() {
-	fmt.Println("Kafka consumer closed")
 }
 
 func (c *kafkaConsumer) StartConsume(handler handler) error {
