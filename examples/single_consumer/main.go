@@ -48,7 +48,6 @@ func singleConsumer() {
 	}
 
 	var kafkaMessageBus = karacakafka.NewKaracaKafkaConsumer(context.Background(), karacaKafkaConfig)
-
 	err := kafkaMessageBus.StartConsume(singleConsumerHandler)
 	if err != nil {
 		return

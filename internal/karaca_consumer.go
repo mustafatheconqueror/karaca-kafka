@@ -30,8 +30,7 @@ type karacaConsumer struct {
 
 type KaracaConsumer interface {
 	StartConsume(messageHandler karacakafka.MessageHandler) error
-
-	/*createTopicIfNotExist(topic string, numPartitions int, replicationFactor int, retention int) error
+	createTopicIfNotExist(topic string, numPartitions int, replicationFactor int, retention int) error
 	createRetryTopic(topic string) error
 	createErrorTopic(topic string) error
 	createDeadTopic(topic string) error
@@ -40,11 +39,10 @@ type KaracaConsumer interface {
 	messageHandler(message *kafka.Message)
 	close()
 	markAsClosed()
-	publishMessageToRetryTopic(ctx context.Context, message kafka.Message, r any, deadTopicName string)*/
-
+	publishMessageToRetryTopic(ctx context.Context, message kafka.Message, r any, deadTopicName string)
 }
 
-func NewKafkaConsumer(ctx context.Context, config karacakafka.KaracaKafkaConfig) karacakafka.Consumer {
+func NewKafkaConsumer(ctx context.Context, config karacakafka.KaracaKafkaConfig) KaracaConsumer {
 
 	var (
 		consumer *kafka.Consumer
@@ -225,13 +223,13 @@ func (c *karacaConsumer) messageHandler(message *kafka.Message) {
 		}
 	}()
 
-	err = c.MessageHandler(KaracaKafkaMessage{
+	err = c.MessageHandler(karacakafka.KafkaMessage{
 		CorrelationId: CorrelationId(message.Headers),
 		Timestamp:     timeStamp,
 		Payload:       message.Value,
 		Topic:         *message.TopicPartition.Topic,
 		Partition:     int(message.TopicPartition.Partition),
-		Headers:       MapHeaders(message.Headers),
+		//todo: düzelt Headers:       //MapHeaders(message.Headers),
 	})
 
 	if err != nil {
