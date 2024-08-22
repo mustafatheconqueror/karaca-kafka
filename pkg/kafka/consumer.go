@@ -5,7 +5,7 @@ import (
 	"github.com/mustafatheconqueror/karaca-kafka/internal"
 )
 
-type MessageHandler func(message internal.KafkaMessage) error
+type MessageHandler func(message internal.KaracaKafkaMessage) error
 
 type Consumer interface {
 	StartConsume(messageHandler MessageHandler) error

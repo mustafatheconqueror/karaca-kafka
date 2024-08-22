@@ -2,11 +2,11 @@ package internal
 
 import "time"
 
-type KafkaMessage struct {
+type KaracaKafkaMessage struct {
 	Payload       []byte
 	CorrelationId string
 	Timestamp     time.Time
-	Headers       KafkaHeaders
+	Headers       KaracaKafkaHeaders
 	Topic         string
 	Partition     int
 }

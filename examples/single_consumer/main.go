@@ -58,7 +58,7 @@ func singleConsumer() {
 }
 
 // singleConsumerHandler is the handler function that will be called for each consumed message
-func singleConsumerHandler(message KafkaMessage) error {
+func singleConsumerHandler(message karacakafka.KafkaMessage) error {
 	var ()
 	fmt.Println(message)
 	return nil

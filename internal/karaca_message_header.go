@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-type KafkaHeaders struct {
+type KaracaKafkaHeaders struct {
 	TimeStamp    time.Time
 	UserName     string
 	IdentityName string
@@ -15,11 +15,11 @@ type KafkaHeaders struct {
 	MessageType  string
 }
 
-func MapHeaders(headers []kafka.Header) KafkaHeaders {
+func MapHeaders(headers []kafka.Header) KaracaKafkaHeaders {
 	version, _ := strconv.Atoi(Version(headers))
 	timeStamp, _ := time.Parse("01/02/2006 15:04:05", TimeStamp(headers))
 
-	return KafkaHeaders{
+	return KaracaKafkaHeaders{
 		IdentityName: IdentityName(headers),
 		IdentityType: IdentityType(headers),
 		Version:      version,
