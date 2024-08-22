@@ -1,14 +1,30 @@
-package config
+package kafka
 
 import (
-	"fmt"
-	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
-	"github.com/mustafatheconqueror/karaca-kafka/constants"
-	"strings"
 	"time"
 )
 
-type KafkaReaderConfig struct {
+type KaracaKafkaConfig struct {
+	ConsumerConfig ConsumerConfig
+	ProducerConfig ProducerConfig
+	ReaderConfig   ReaderConfig
+}
+
+type ConsumerConfig struct {
+	Brokers             []string
+	AppName             string
+	Topics              []string
+	AutoOffsetResetType string
+}
+
+type ProducerConfig struct {
+	Brokers           []string
+	AcknowledgeType   string
+	CompressionType   string
+	DeliveryTimeoutMs time.Duration
+}
+
+type ReaderConfig struct {
 	Brokers               []string
 	GroupID               string
 	AutoOffsetResetType   string
@@ -18,6 +34,21 @@ type KafkaReaderConfig struct {
 	SessionTimeout        time.Duration
 	Debug                 string
 	ClientID              string
+}
+
+/*
+func NewKafkaProducerConfig(brokers []string) *KafkaProducerConfig {
+	return &KafkaProducerConfig{
+		Brokers:           brokers,
+		AcknowledgeType:   constants.AcknowledgeTypeAll,
+		CompressionType:   constants.CompressionTypeGzip,
+		DeliveryTimeoutMs: constants.DefaultDeliveryTimeoutMs * time.Second,
+	}
+}
+
+// Todo: Burayı daha güzel hale getirebilirsin
+func (config *KafkaProducerConfig) ToKafkaConfigMap() *kafka.ConfigMap {
+	return
 }
 
 func NewKafkaReaderConfig(brokers []string, groupID string) *KafkaReaderConfig {
@@ -47,3 +78,4 @@ func (config *KafkaReaderConfig) ToKafkaConfigMap() *kafka.ConfigMap {
 		"client.id":                config.ClientID,
 	}
 }
+*/

@@ -1,0 +1,1 @@
+module single_consumer

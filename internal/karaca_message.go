@@ -1,4 +1,4 @@
-package kafka_message
+package internal
 
 import "time"
 

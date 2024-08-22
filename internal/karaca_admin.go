@@ -1,30 +1,29 @@
-package kafka_admin
+package internal
 
 import (
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
-	"github.com/mustafatheconqueror/karaca-kafka/producer"
 	"log"
 )
 
-type AdminClient interface {
+type KaracaAdmin interface {
 	Close()
 	GetKafkaAdmin() *kafka.AdminClient
 }
 
-type kafkaAdminClient struct {
+type karacaAdmin struct {
 	Admin *kafka.AdminClient
 }
 
-func (a *kafkaAdminClient) Close() {
+func (a *karacaAdmin) Close() {
 	a.Admin.Close()
 	log.Println("Kafka admin client closed")
 }
 
-func (a *kafkaAdminClient) GetKafkaAdmin() *kafka.AdminClient {
+func (a *karacaAdmin) GetKafkaAdmin() *kafka.AdminClient {
 	return a.Admin
 }
 
-func NewAdminFromProducer(p producer.Producer) (AdminClient, error) {
+func NewAdminFromProducer(p KaracaProducer) (KaracaAdmin, error) {
 
 	var (
 		kafkaAdmin *kafka.AdminClient
@@ -39,7 +38,7 @@ func NewAdminFromProducer(p producer.Producer) (AdminClient, error) {
 
 	log.Printf("Created Admin Client %v\n", kafkaAdmin)
 
-	return &kafkaAdminClient{
+	return &karacaAdmin{
 		Admin: kafkaAdmin,
 	}, nil
 }
