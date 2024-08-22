@@ -30,6 +30,7 @@ type karacaConsumer struct {
 
 type KaracaConsumer interface {
 	StartConsume(messageHandler karacakafka.MessageHandler) error
+	GetKafkaConsumer() *kafka.Consumer
 	createTopicIfNotExist(topic string, numPartitions int, replicationFactor int, retention int) error
 	createRetryTopic(topic string) error
 	createErrorTopic(topic string) error
@@ -86,6 +87,10 @@ func NewKafkaConsumer(ctx context.Context, config karacakafka.KaracaKafkaConfig)
 		IsClosed:    false,
 		Logger:      log.New(os.Stdout, "kafka-consumer: ", log.LstdFlags),
 	}
+}
+
+func (kc *karacaConsumer) GetKafkaConsumer() *kafka.Consumer {
+	return kc.Consumer
 }
 
 func (c *karacaConsumer) StartConsume(MessageHandler karacakafka.MessageHandler) error {

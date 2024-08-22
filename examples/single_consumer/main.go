@@ -3,9 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/mustafatheconqueror/karaca-kafka/pkg/constants"
+	karacakafkaConst "github.com/mustafatheconqueror/karaca-kafka/pkg/constants"
 	karacakafka "github.com/mustafatheconqueror/karaca-kafka/pkg/kafka"
-
 	"time"
 )
 
@@ -19,20 +18,20 @@ func singleConsumer() {
 		Brokers:             []string{"localhost:9092", "localhost:9093", "localhost:9094"},
 		AppName:             "order.created.consumer",
 		Topics:              []string{"hepsiburada.oms.order.created.v1.main"},
-		AutoOffsetResetType: constants.AutoOffsetResetTypeEarliest,
+		AutoOffsetResetType: karacakafkaConst.AutoOffsetResetTypeEarliest,
 	}
 
 	var producerConfig = karacakafka.ProducerConfig{
 		Brokers:           []string{"localhost:9092", "localhost:9093", "localhost:9094"},
-		AcknowledgeType:   constants.AcknowledgeTypeAll,
-		CompressionType:   constants.CompressionTypeGzip,
-		DeliveryTimeoutMs: constants.DefaultDeliveryTimeoutMs * time.Second,
+		AcknowledgeType:   karacakafkaConst.AcknowledgeTypeAll,
+		CompressionType:   karacakafkaConst.CompressionTypeGzip,
+		DeliveryTimeoutMs: karacakafkaConst.DefaultDeliveryTimeoutMs * time.Second,
 	}
 
 	var readerConfig = karacakafka.ReaderConfig{
 		Brokers:               []string{"localhost:9092", "localhost:9093", "localhost:9094"},
 		GroupID:               "groupID",
-		AutoOffsetResetType:   constants.AutoOffsetResetTypeEarliest,
+		AutoOffsetResetType:   karacakafkaConst.AutoOffsetResetTypeEarliest,
 		AllowAutoCreateTopics: false,
 		EnableAutoCommit:      false,
 		FetchMaxBytes:         6428800,
@@ -52,8 +51,6 @@ func singleConsumer() {
 	if err != nil {
 		return
 	}
-
-	return
 }
 
 // singleConsumerHandler is the handler function that will be called for each consumed message
