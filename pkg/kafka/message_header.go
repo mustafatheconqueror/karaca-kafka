@@ -1,7 +1,6 @@
 package kafka
 
-import "time"
-
+/*
 type KafkaHeaders struct {
 	TimeStamp    time.Time
 	UserName     string
@@ -10,3 +9,4 @@ type KafkaHeaders struct {
 	Version      int
 	MessageType  string
 }
+*/

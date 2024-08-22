@@ -17,6 +17,8 @@ import (
 	"time"
 )
 
+type MessageHandler func(message KafkaMessage) error
+
 type karacaConsumer struct {
 	context.Context
 	AdminClient    *kafka.AdminClient

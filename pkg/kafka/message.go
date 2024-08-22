@@ -1,8 +1,6 @@
 package kafka
 
-import "time"
-
-type KafkaMessage struct {
+/*type KafkaMessage struct {
 	Payload       []byte
 	CorrelationId string
 	Timestamp     time.Time
@@ -10,3 +8,4 @@ type KafkaMessage struct {
 	Topic         string
 	Partition     int
 }
+*/
