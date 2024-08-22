@@ -29,16 +29,17 @@ type karacaConsumer struct {
 }
 
 type KaracaConsumer interface {
-	createTopicIfNotExist(topic string, numPartitions int, replicationFactor int, retention int) error
-	createRetryTopic(topic string) error
-	createErrorTopic(topic string) error
-	createDeadTopic(topic string) error
-	ensureTopicsExist() error
-	subscribeToTopics() error
-	messageHandler(message *kafka.Message)
-	close()
-	markAsClosed()
-	publishMessageToRetryTopic(ctx context.Context, message kafka.Message, r any, deadTopicName string)
+	/*
+		createTopicIfNotExist(topic string, numPartitions int, replicationFactor int, retention int) error
+		createRetryTopic(topic string) error
+		createErrorTopic(topic string) error
+		createDeadTopic(topic string) error
+		ensureTopicsExist() error
+		subscribeToTopics() error
+		messageHandler(message *kafka.Message)
+		close()
+		markAsClosed()
+		publishMessageToRetryTopic(ctx context.Context, message kafka.Message, r any, deadTopicName string)*/
 }
 
 func NewKafkaConsumer(ctx context.Context, config karacakafka.KaracaKafkaConfig) karacakafka.Consumer {

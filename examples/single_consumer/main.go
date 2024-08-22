@@ -3,9 +3,9 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/mustafatheconqueror/karaca-kafka/internal"
 	"github.com/mustafatheconqueror/karaca-kafka/pkg/constants"
 	karacakafka "github.com/mustafatheconqueror/karaca-kafka/pkg/kafka"
+
 	"time"
 )
 
@@ -47,7 +47,7 @@ func singleConsumer() {
 		ProducerConfig: producerConfig,
 	}
 
-	var kafkaMessageBus = internal.NewKafkaConsumer(context.Background(), karacaKafkaConfig)
+	var kafkaMessageBus = karacakafka.NewKaracaKafkaConsumer(context.Background(), karacaKafkaConfig)
 
 	err := kafkaMessageBus.StartConsume(singleConsumerHandler)
 	if err != nil {
@@ -58,7 +58,7 @@ func singleConsumer() {
 }
 
 // singleConsumerHandler is the handler function that will be called for each consumed message
-func singleConsumerHandler(message internal.KafkaMessage) error {
+func singleConsumerHandler(message KafkaMessage) error {
 	var ()
 	fmt.Println(message)
 	return nil
