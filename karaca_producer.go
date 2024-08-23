@@ -17,33 +17,6 @@ type karacaProducer struct {
 	Producer *kafka.Producer
 }
 
-func NewKaracaProducer(producerConfig ProducerConfig) (KaracaProducer, error) {
-
-	var (
-		producer *kafka.Producer
-		err      error
-	)
-
-	kafkaProducerConfig := &kafka.ConfigMap{
-		"bootstrap.servers":   strings.Join(producerConfig.Brokers, ","),
-		"acks":                producerConfig.AcknowledgeType,
-		"compression.type":    producerConfig.CompressionType,
-		"delivery.timeout.ms": fmt.Sprintf("%d", producerConfig.DeliveryTimeoutMs.Milliseconds()),
-	}
-
-	producer, err = kafka.NewProducer(kafkaProducerConfig)
-	if err != nil {
-		// todo: burası hiçbir zaman error yakalamayacak çünkü kafkaproducer async şekilde error fırlatıyor her türlü producer nesnesi create edecek.
-		log.Printf("Error occurred when creating new producer: %v", err)
-	}
-
-	log.Printf("Karaca Producer Created %v\n", producer)
-
-	return &karacaProducer{
-		Producer: producer,
-	}, nil
-}
-
 func (kp *karacaProducer) Produce(topic string, key []byte, value []byte) error {
 
 	message := &kafka.Message{
@@ -75,4 +48,31 @@ func (kp *karacaProducer) Close() error {
 
 func (kp *karacaProducer) ListenEvents() chan kafka.Event {
 	return kp.Producer.Events()
+}
+
+func NewKaracaProducer(producerConfig ProducerConfig) (KaracaProducer, error) {
+
+	var (
+		producer *kafka.Producer
+		err      error
+	)
+
+	kafkaProducerConfig := &kafka.ConfigMap{
+		"bootstrap.servers":   strings.Join(producerConfig.Brokers, ","),
+		"acks":                producerConfig.AcknowledgeType,
+		"compression.type":    producerConfig.CompressionType,
+		"delivery.timeout.ms": fmt.Sprintf("%d", producerConfig.DeliveryTimeoutMs.Milliseconds()),
+	}
+
+	producer, err = kafka.NewProducer(kafkaProducerConfig)
+	if err != nil {
+		// todo: burası hiçbir zaman error yakalamayacak çünkü kafkaproducer async şekilde error fırlatıyor her türlü producer nesnesi create edecek.
+		log.Printf("Error occurred when creating new producer: %v", err)
+	}
+
+	log.Printf("Karaca Producer Created %v\n", producer)
+
+	return &karacaProducer{
+		Producer: producer,
+	}, nil
 }

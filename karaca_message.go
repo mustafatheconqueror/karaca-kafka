@@ -1,12 +1,14 @@
-package internal
+package karaca_kafka
 
-import "time"
+import (
+	"time"
+)
 
-type KaracaKafkaMessage struct {
+type KaracaMessage struct {
 	Payload       []byte
 	CorrelationId string
 	Timestamp     time.Time
-	Headers       KaracaKafkaHeaders
+	Headers       KaracaMessageHeader
 	Topic         string
 	Partition     int
 }

@@ -1,6 +1,11 @@
-package constants
+package karaca_kafka
 
 const (
+	MainSuffix  = ".main"
+	RetrySuffix = ".retry"
+	ErrorSuffix = ".error"
+	DeadSuffix  = ".dead"
+
 	AcknowledgeTypeAll    = "all"
 	AcknowledgeTypeNone   = "none"
 	AcknowledgeTypeLeader = "leader"

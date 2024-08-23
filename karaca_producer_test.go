@@ -8,6 +8,14 @@ import (
 	"time"
 )
 
+//Test Cases
+/*
+case 3: başarılı şekilde broker'a bağlansın ama başarılı produce edemesin
+case 4: başararılı şekilde broker'a bağlansın ve başarılı produce etsin.
+case 5: başarılı şekilde producer'a bağlansın ve başarılı şekilde connection close etsin
+case 6: başarıl şekilde producer'a bağlansın ama başarılı şekilde connection close edemesin
+*/
+
 func TestNewKaracaProducer_CannotConnectToBroker(t *testing.T) {
 	producerConfig := ProducerConfig{
 		Brokers:           []string{"invalid-broker:9092"},
@@ -25,7 +33,6 @@ func TestNewKaracaProducer_CannotConnectToBroker(t *testing.T) {
 	// Set up the event listener to capture errors asynchronously
 	go func() {
 		for e := range producer.ListenEvents() {
-			log.Println(e.String())
 			if e.String() == "1/1 brokers are down" {
 				errChan <- e.String()
 				return

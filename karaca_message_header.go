@@ -1,4 +1,4 @@
-package internal
+package karaca_kafka
 
 import (
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
@@ -6,27 +6,13 @@ import (
 	"time"
 )
 
-type KaracaKafkaHeaders struct {
+type KaracaMessageHeader struct {
 	TimeStamp    time.Time
 	UserName     string
 	IdentityName string
 	IdentityType string
 	Version      int
 	MessageType  string
-}
-
-func MapHeaders(headers []kafka.Header) KaracaKafkaHeaders {
-	version, _ := strconv.Atoi(Version(headers))
-	timeStamp, _ := time.Parse("01/02/2006 15:04:05", TimeStamp(headers))
-
-	return KaracaKafkaHeaders{
-		IdentityName: IdentityName(headers),
-		IdentityType: IdentityType(headers),
-		Version:      version,
-		UserName:     UserName(headers),
-		TimeStamp:    timeStamp,
-		MessageType:  EventType(headers),
-	}
 }
 
 func IdentityName(headers []kafka.Header) string {
