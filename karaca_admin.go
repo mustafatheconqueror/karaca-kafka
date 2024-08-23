@@ -8,6 +8,7 @@ import (
 
 type KaracaAdmin interface {
 	GetKafkaAdmin() *kafka.AdminClient
+	GetMetaData(topic *string) (*kafka.Metadata, error)
 	Close()
 }
 
@@ -17,6 +18,11 @@ type karacaAdmin struct {
 
 func (ka *karacaAdmin) GetKafkaAdmin() *kafka.AdminClient {
 	return ka.KafkaAdmin
+}
+
+func (ka *karacaAdmin) GetMetaData(topic *string) (*kafka.Metadata, error) {
+	metadata, err := ka.KafkaAdmin.GetMetadata(topic, false, 1000)
+	return metadata, err
 }
 
 func (ka *karacaAdmin) Close() {
