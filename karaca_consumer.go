@@ -27,7 +27,7 @@ type KaracaConsumer interface {
 	messageHandler(message *kafka.Message)
 	close()
 	markAsClosed()
-	publishMessageToRetryTopic(ctx context.Context, message kafka.Message, r any, deadTopicName string)
+	publishMessageToErrorTopic(ctx context.Context, message kafka.Message, r any, errorTopicName string)
 }
 
 type karacaConsumer struct {
@@ -116,8 +116,7 @@ func (kc *karacaConsumer) createDeadTopic(topic string) error {
 func (kc *karacaConsumer) ensureTopicsExist() error {
 	var err error
 
-	//todo: change this.
-	topicPrefix := "hepsiburada.oms"
+	topicPrefix := kc.Config.ConsumerConfig.TopicDomainName + kc.Config.ConsumerConfig.TopicSubDomainName + "_"
 
 	retryTopicName := kc.generateRetryTopicName(topicPrefix)
 	errorTopicName := kc.generateErrorTopicName(topicPrefix)
@@ -148,7 +147,7 @@ func (kc *karacaConsumer) subscribeToTopics() error {
 	var err error
 	var topicsToSubscribe []string
 
-	retryTopicName := "hepsiburada.oms_" + kc.Config.ConsumerConfig.AppName + RetrySuffix
+	retryTopicName := kc.Config.ConsumerConfig.TopicDomainName + kc.Config.ConsumerConfig.TopicSubDomainName + "_" + kc.Config.ConsumerConfig.AppName + RetrySuffix
 
 	topicsToSubscribe = append(topicsToSubscribe, kc.Config.ConsumerConfig.Topics...)
 	topicsToSubscribe = append(topicsToSubscribe, retryTopicName)
@@ -175,8 +174,8 @@ func (kc *karacaConsumer) messageHandler(message *kafka.Message) {
 
 			IncrementRetryCount(message)
 
-			retryTopicName := kc.Config.ConsumerConfig.AppName + RetrySuffix
-			kc.publishMessageToRetryTopic(kc.Context, *message, r, retryTopicName)
+			retryTopicName := kc.Config.ConsumerConfig.TopicDomainName + kc.Config.ConsumerConfig.TopicSubDomainName + "_" + kc.Config.ConsumerConfig.AppName + RetrySuffix
+			kc.publishMessageToErrorTopic(kc.Context, *message, r, retryTopicName)
 		}
 	}()
 
@@ -214,17 +213,18 @@ func (kc *karacaConsumer) markAsClosed() {
 	log.Printf("%s consumer marked as closed", kc.Config.ConsumerConfig.AppName)
 }
 
-func (kc *karacaConsumer) publishMessageToRetryTopic(
+func (kc *karacaConsumer) publishMessageToErrorTopic(
 	ctx context.Context,
 	message kafka.Message,
 	r any,
-	retryTopicName string) {
+	errorTopicName string) {
 
 	var (
 		ok           bool
 		err          error
 		kafkaMessage *kafka.Message
 	)
+
 	deliveryChan := make(chan kafka.Event)
 	err, ok = r.(error)
 
@@ -237,7 +237,7 @@ func (kc *karacaConsumer) publishMessageToRetryTopic(
 	retryCount := RetryCount(message.Headers)
 
 	retryMessage := prepareRetryMessage(message, retryCount, err,
-		fmt.Sprintf("[Exception Recover] %v %s\n", err, stack[:length]), retryTopicName)
+		fmt.Sprintf("[Exception Recover] %v %s\n", err, stack[:length]), errorTopicName)
 
 	for kafkaMessage == nil || kafkaMessage.TopicPartition.Error != nil {
 		if kafkaMessage != nil && kafkaMessage.TopicPartition.Error != nil {
@@ -286,7 +286,6 @@ func (kc *karacaConsumer) generateDeadTopicName(topicPrefix string) string {
 	return fmt.Sprintf("%s_%s_dead", topicPrefix, kc.Config.ConsumerConfig.AppName)
 }
 
-// todo: buradaki metodu doğru yerine gönder.
 func prepareRetryMessage(message kafka.Message, retryCount int, err error, stackTracing string, topicName string) kafka.Message {
 	var headers []kafka.Header
 

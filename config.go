@@ -15,13 +15,17 @@ type ConsumerConfig struct {
 	AppName             string
 	Topics              []string
 	AutoOffsetResetType string
+	TopicDomainName     string
+	TopicSubDomainName  string
 }
 
 type ProducerConfig struct {
-	Brokers           []string
-	AcknowledgeType   string
-	CompressionType   string
-	DeliveryTimeoutMs time.Duration
+	Brokers            []string
+	AcknowledgeType    string
+	CompressionType    string
+	DeliveryTimeoutMs  time.Duration
+	TopicDomainName    string
+	TopicSubDomainName string
 }
 
 type ReaderConfig struct {
@@ -34,4 +38,6 @@ type ReaderConfig struct {
 	SessionTimeout        time.Duration
 	Debug                 string
 	ClientID              string
+	TopicDomainName       string
+	TopicSubDomainName    string
 }
