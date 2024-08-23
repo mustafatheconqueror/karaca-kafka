@@ -7,11 +7,16 @@ import (
 )
 
 type KaracaAdmin interface {
+	GetKafkaAdmin() *kafka.AdminClient
 	Close()
 }
 
 type karacaAdmin struct {
 	KafkaAdmin *kafka.AdminClient
+}
+
+func (ka *karacaAdmin) GetKafkaAdmin() *kafka.AdminClient {
+	return ka.KafkaAdmin
 }
 
 func (ka *karacaAdmin) Close() {

@@ -362,3 +362,48 @@ func prepareRetryMessage(message kafka.Message, retryCount int, err error, stack
 		Value:          message.Value,
 	}
 }
+
+func NewKafkaConsumer(ctx context.Context, config KaracaKafkaConfig) KaracaConsumer {
+
+	var (
+		consumer *kafka.Consumer
+		err      error
+	)
+
+	kafkaProducer, err := NewKaracaProducer(config.ProducerConfig)
+	if err != nil {
+		log.Printf("Error occurred when creating producer: %v", err)
+	}
+
+	kafkaAdmin, err := NewAdminFromKaracaProducer(kafkaProducer)
+	if err != nil {
+		log.Printf("Error occurred when creating admin client: %v", err)
+	}
+
+	readerConfig := &kafka.ConfigMap{
+		"bootstrap.servers":        strings.Join(config.ReaderConfig.Brokers, ","),
+		"group.id":                 config.ReaderConfig.GroupID,
+		"auto.offset.reset":        config.ReaderConfig.AutoOffsetResetType,
+		"allow.auto.create.topics": fmt.Sprintf("%t", config.ReaderConfig.AllowAutoCreateTopics),
+		"enable.auto.commit":       fmt.Sprintf("%t", config.ReaderConfig.EnableAutoCommit),
+		"fetch.max.bytes":          fmt.Sprintf("%d", config.ReaderConfig.FetchMaxBytes),
+		"session.timeout.ms":       fmt.Sprintf("%d", config.ReaderConfig.SessionTimeout.Milliseconds()),
+		"debug":                    config.ReaderConfig.Debug,
+		"client.id":                config.ReaderConfig.ClientID,
+	}
+
+	consumer, err = kafka.NewConsumer(readerConfig)
+	if err != nil {
+		log.Printf("Error occurred when creating consumer: %v", err)
+		time.Sleep(5 * time.Second)
+	}
+
+	return &karacaConsumer{
+		Context:     ctx,
+		AdminClient: kafkaAdmin.GetKafkaAdmin(),
+		Producer:    kafkaProducer.GetKafkaProducer(),
+		Consumer:    consumer,
+		Config:      config,
+		IsClosed:    false,
+	}
+}

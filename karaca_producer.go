@@ -8,6 +8,7 @@ import (
 )
 
 type KaracaProducer interface {
+	GetKafkaProducer() *kafka.Producer
 	Produce(topic string, key []byte, value []byte) error
 	Close() error
 	ListenEvents() chan kafka.Event
@@ -15,6 +16,10 @@ type KaracaProducer interface {
 
 type karacaProducer struct {
 	Producer *kafka.Producer
+}
+
+func (kp *karacaProducer) GetKafkaProducer() *kafka.Producer {
+	return kp.Producer
 }
 
 func (kp *karacaProducer) Produce(topic string, key []byte, value []byte) error {
