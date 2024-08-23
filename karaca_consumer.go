@@ -116,7 +116,7 @@ func (kc *karacaConsumer) createDeadTopic(topic string) error {
 func (kc *karacaConsumer) ensureTopicsExist() error {
 	var err error
 
-	topicPrefix := kc.Config.ConsumerConfig.TopicDomainName + "." + kc.Config.ConsumerConfig.TopicSubDomainName + "_"
+	topicPrefix := kc.Config.ConsumerConfig.TopicDomainName + "." + kc.Config.ConsumerConfig.TopicSubDomainName
 
 	retryTopicName := kc.generateRetryTopicName(topicPrefix)
 	errorTopicName := kc.generateErrorTopicName(topicPrefix)
