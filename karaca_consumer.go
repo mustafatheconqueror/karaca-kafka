@@ -116,7 +116,7 @@ func (kc *karacaConsumer) createDeadTopic(topic string) error {
 func (kc *karacaConsumer) ensureTopicsExist() error {
 	var err error
 
-	topicPrefix := kc.Config.ConsumerConfig.TopicDomainName + kc.Config.ConsumerConfig.TopicSubDomainName + "_"
+	topicPrefix := kc.Config.ConsumerConfig.TopicDomainName + "." + kc.Config.ConsumerConfig.TopicSubDomainName + "_"
 
 	retryTopicName := kc.generateRetryTopicName(topicPrefix)
 	errorTopicName := kc.generateErrorTopicName(topicPrefix)
@@ -147,7 +147,7 @@ func (kc *karacaConsumer) subscribeToTopics() error {
 	var err error
 	var topicsToSubscribe []string
 
-	retryTopicName := kc.Config.ConsumerConfig.TopicDomainName + kc.Config.ConsumerConfig.TopicSubDomainName + "_" + kc.Config.ConsumerConfig.AppName + RetrySuffix
+	retryTopicName := kc.Config.ConsumerConfig.TopicDomainName + "." + kc.Config.ConsumerConfig.TopicSubDomainName + "_" + kc.Config.ConsumerConfig.AppName + RetrySuffix
 
 	topicsToSubscribe = append(topicsToSubscribe, kc.Config.ConsumerConfig.Topics...)
 	topicsToSubscribe = append(topicsToSubscribe, retryTopicName)
@@ -174,7 +174,7 @@ func (kc *karacaConsumer) messageHandler(message *kafka.Message) {
 
 			IncrementRetryCount(message)
 
-			retryTopicName := kc.Config.ConsumerConfig.TopicDomainName + kc.Config.ConsumerConfig.TopicSubDomainName + "_" + kc.Config.ConsumerConfig.AppName + RetrySuffix
+			retryTopicName := kc.Config.ConsumerConfig.TopicDomainName + "." + kc.Config.ConsumerConfig.TopicSubDomainName + "_" + kc.Config.ConsumerConfig.AppName + RetrySuffix
 			kc.publishMessageToErrorTopic(kc.Context, *message, r, retryTopicName)
 		}
 	}()
