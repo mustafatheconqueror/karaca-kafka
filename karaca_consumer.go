@@ -116,11 +116,12 @@ func (kc *karacaConsumer) createDeadTopic(topic string) error {
 func (kc *karacaConsumer) ensureTopicsExist() error {
 	var err error
 
-	mainTopicName := kc.Config.ConsumerConfig.Topics[0]
+	//todo: change this.
+	topicPrefix := "hepsiburada.oms"
 
-	retryTopicName := kc.generateRetryTopicName(mainTopicName)
-	errorTopicName := kc.generateErrorTopicName(mainTopicName)
-	deadTopicName := kc.generateDeadTopicName(mainTopicName)
+	retryTopicName := kc.generateRetryTopicName(topicPrefix)
+	errorTopicName := kc.generateErrorTopicName(topicPrefix)
+	deadTopicName := kc.generateDeadTopicName(topicPrefix)
 
 	err = kc.createRetryTopic(retryTopicName)
 	if err != nil {
@@ -147,7 +148,7 @@ func (kc *karacaConsumer) subscribeToTopics() error {
 	var err error
 	var topicsToSubscribe []string
 
-	retryTopicName := kc.Config.ConsumerConfig.AppName + RetrySuffix
+	retryTopicName := "hepsiburada.oms_" + kc.Config.ConsumerConfig.AppName + RetrySuffix
 
 	topicsToSubscribe = append(topicsToSubscribe, kc.Config.ConsumerConfig.Topics...)
 	topicsToSubscribe = append(topicsToSubscribe, retryTopicName)
@@ -272,19 +273,17 @@ func removeMainSuffix(topic string) string {
 	return strings.TrimSuffix(topic, MainSuffix)
 }
 
-func (kc *karacaConsumer) generateRetryTopicName(mainTopic string) string {
-	cleanTopicName := removeMainSuffix(mainTopic)
-	return fmt.Sprintf("%s_%s_retry", cleanTopicName, kc.Config.ConsumerConfig.AppName)
+func (kc *karacaConsumer) generateRetryTopicName(topicPrefix string) string {
+
+	return fmt.Sprintf("%s_%s_retry", topicPrefix, kc.Config.ConsumerConfig.AppName)
 }
 
-func (kc *karacaConsumer) generateErrorTopicName(mainTopic string) string {
-	cleanTopicName := removeMainSuffix(mainTopic)
-	return fmt.Sprintf("%s_%s_error", cleanTopicName, kc.Config.ConsumerConfig.AppName)
+func (kc *karacaConsumer) generateErrorTopicName(topicPrefix string) string {
+	return fmt.Sprintf("%s_%s_error", topicPrefix, kc.Config.ConsumerConfig.AppName)
 }
 
-func (kc *karacaConsumer) generateDeadTopicName(mainTopic string) string {
-	cleanTopicName := removeMainSuffix(mainTopic)
-	return fmt.Sprintf("%s_%s_dead", cleanTopicName, kc.Config.ConsumerConfig.AppName)
+func (kc *karacaConsumer) generateDeadTopicName(topicPrefix string) string {
+	return fmt.Sprintf("%s_%s_dead", topicPrefix, kc.Config.ConsumerConfig.AppName)
 }
 
 // todo: buradaki metodu doğru yerine gönder.

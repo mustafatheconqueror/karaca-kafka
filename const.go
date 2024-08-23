@@ -2,9 +2,9 @@ package karaca_kafka
 
 const (
 	MainSuffix  = ".main"
-	RetrySuffix = ".retry"
-	ErrorSuffix = ".error"
-	DeadSuffix  = ".dead"
+	RetrySuffix = "_retry"
+	ErrorSuffix = "_error"
+	DeadSuffix  = "_dead"
 
 	AcknowledgeTypeAll    = "all"
 	AcknowledgeTypeNone   = "none"
