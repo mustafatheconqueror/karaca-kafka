@@ -174,8 +174,8 @@ func (kc *karacaConsumer) messageHandler(message *kafka.Message) {
 
 			IncrementRetryCount(message)
 
-			retryTopicName := kc.Config.ConsumerConfig.TopicDomainName + "." + kc.Config.ConsumerConfig.TopicSubDomainName + "_" + kc.Config.ConsumerConfig.AppName + RetrySuffix
-			kc.publishMessageToErrorTopic(kc.Context, *message, r, retryTopicName)
+			errorTopicName := kc.Config.ConsumerConfig.TopicDomainName + "." + kc.Config.ConsumerConfig.TopicSubDomainName + "_" + kc.Config.ConsumerConfig.AppName + ErrorSuffix
+			kc.publishMessageToErrorTopic(kc.Context, *message, r, errorTopicName)
 		}
 	}()
 
