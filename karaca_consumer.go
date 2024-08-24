@@ -61,6 +61,7 @@ func (kc *karacaConsumer) StartConsume(MessageHandler MessageHandler) error {
 	)
 
 	for {
+
 		if kc.IsClosed {
 			log.Println("Marked IsClosed true so consumer closing and returning...")
 			_ = kc.Consumer.Close()
@@ -68,6 +69,7 @@ func (kc *karacaConsumer) StartConsume(MessageHandler MessageHandler) error {
 		}
 
 		message, err = kc.Consumer.ReadMessage(time.Second * 5)
+
 		if err != nil {
 			if kafkaErr, ok := err.(kafka.Error); ok {
 				if kafkaErr.Code() == kafka.ErrTimedOut {
@@ -175,6 +177,7 @@ func (kc *karacaConsumer) messageHandler(message *kafka.Message) {
 			IncrementRetryCount(message)
 
 			errorTopicName := kc.Config.ConsumerConfig.TopicDomainName + "." + kc.Config.ConsumerConfig.TopicSubDomainName + "_" + kc.Config.ConsumerConfig.AppName + ErrorSuffix
+
 			kc.publishMessageToErrorTopic(kc.Context, *message, r, errorTopicName)
 		}
 	}()
@@ -185,7 +188,7 @@ func (kc *karacaConsumer) messageHandler(message *kafka.Message) {
 		Payload:       message.Value,
 		Topic:         *message.TopicPartition.Topic,
 		Partition:     int(message.TopicPartition.Partition),
-		//todo: düzelt Headers:       //MapHeaders(message.Headers),
+		Headers:       mapHeaders(message.Headers),
 	})
 
 	if err != nil {
@@ -266,11 +269,6 @@ func (kc *karacaConsumer) publishMessageToErrorTopic(
 	}
 
 	log.Printf("CommitMessage executed for CorrelationId: %s", CorrelationId(message.Headers))
-}
-
-// Todo: buradaki yardımcı metodları bir yerlere taşıyabilirsin gibi duruyor.
-func removeMainSuffix(topic string) string {
-	return strings.TrimSuffix(topic, MainSuffix)
 }
 
 func (kc *karacaConsumer) generateRetryTopicName(topicPrefix string) string {
