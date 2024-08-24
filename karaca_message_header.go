@@ -48,12 +48,7 @@ func UserName(headers []kafka.Header) string {
 }
 
 func IsRetryable(headers []kafka.Header) bool {
-
-	value := getHeaderValue(headers, "isRetryable")
-	if len(value) == 0 {
-		return false
-	}
-	return value[0] == 1
+	return byteArrayToBool(getHeaderValue(headers, "isRetryable"))
 }
 
 func EventType(headers []kafka.Header) string {
