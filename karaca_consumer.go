@@ -28,6 +28,7 @@ type KaracaConsumer interface {
 	close()
 	markAsClosed()
 	publishMessageToErrorTopic(ctx context.Context, message kafka.Message, r any, errorTopicName string)
+	PublishMessageToTopic(message kafka.Message, r any, topicName string, isErrorTopic bool)
 }
 
 type karacaConsumer struct {
@@ -174,11 +175,16 @@ func (kc *karacaConsumer) messageHandler(message *kafka.Message) {
 	defer func() {
 		if r := recover(); r != nil {
 
-			IncrementRetryCount(message)
-
-			errorTopicName := kc.Config.ConsumerConfig.TopicDomainName + "." + kc.Config.ConsumerConfig.TopicSubDomainName + "_" + kc.Config.ConsumerConfig.AppName + ErrorSuffix
-
-			kc.publishMessageToErrorTopic(kc.Context, *message, r, errorTopicName)
+			// Retry veya Dead Topic durumu belirlenir
+			if shouldRetry := HandleRetryOrDeadMessage(message); shouldRetry {
+				// Error Topic'e gönder
+				errorTopicName := kc.Config.ConsumerConfig.TopicDomainName + "." + kc.Config.ConsumerConfig.TopicSubDomainName + "_" + kc.Config.ConsumerConfig.AppName + ErrorSuffix
+				kc.PublishMessageToTopic(*message, r, errorTopicName, true)
+			} else {
+				// Dead Topic'e gönder
+				deadTopicName := kc.Config.ConsumerConfig.TopicDomainName + "." + kc.Config.ConsumerConfig.TopicSubDomainName + "_" + kc.Config.ConsumerConfig.AppName + DeadSuffix
+				kc.PublishMessageToTopic(*message, r, deadTopicName, false)
+			}
 		}
 	}()
 
@@ -271,6 +277,109 @@ func (kc *karacaConsumer) publishMessageToErrorTopic(
 	log.Printf("CommitMessage executed for CorrelationId: %s", CorrelationId(message.Headers))
 }
 
+func (kc *karacaConsumer) PublishMessageToTopic(message kafka.Message, r any, topicName string, isErrorTopic bool) {
+	var (
+		err          error
+		kafkaMessage *kafka.Message
+	)
+
+	deliveryChan := make(chan kafka.Event)
+	defer close(deliveryChan)
+
+	err, ok := r.(error)
+	if !ok {
+		err = fmt.Errorf("%v", r)
+	}
+
+	stack := make([]byte, 4<<10)
+	length := runtime.Stack(stack, false)
+	retryCount := RetryCount(message.Headers)
+
+	var kafkaMsg kafka.Message
+	if isErrorTopic {
+		stackTrace := fmt.Sprintf("[Exception Recover] %v %s\n", err, stack[:length])
+		kafkaMsg = prepareKafkaMessage(message, retryCount, err, stackTrace, topicName, true)
+	} else {
+		kafkaMsg = prepareKafkaMessage(message, retryCount, nil, "", topicName, false)
+	}
+
+	for kafkaMessage == nil || kafkaMessage.TopicPartition.Error != nil {
+		if kafkaMessage != nil && kafkaMessage.TopicPartition.Error != nil {
+			log.Printf("Error occurred when producing message to topic '%s': %v", topicName, kafkaMessage.TopicPartition.Error)
+			time.Sleep(5 * time.Second)
+		}
+
+		for err = kc.Producer.Produce(&kafkaMsg, deliveryChan); err != nil; {
+			log.Printf("Error occurred when producing message to topic '%s': %v", topicName, err)
+			time.Sleep(5 * time.Second)
+		}
+
+		log.Printf("producer.Produce executed for CorrelationId: %s to topic '%s'", CorrelationId(message.Headers), topicName)
+
+		e := <-deliveryChan
+		kafkaMessage = e.(*kafka.Message)
+
+		log.Printf("deliveryChan executed for CorrelationId: %s to topic '%s'", CorrelationId(message.Headers), topicName)
+	}
+
+	for _, err = kc.Consumer.CommitMessage(&message); err != nil; {
+		log.Printf("Error occurred when committing message: %v", err)
+		time.Sleep(5 * time.Second)
+	}
+
+	log.Printf("CommitMessage executed for CorrelationId: %s", CorrelationId(message.Headers))
+}
+
+func HandleRetryOrDeadMessage(message *kafka.Message) bool {
+
+	const (
+		retryCountKey  = "retryCount"
+		isRetryableKey = "isRetryable"
+	)
+
+	// Eğer mesajda header yoksa, retryCount ve isRetryable header'larını ekle
+	if message.Headers == nil {
+		message.Headers = []kafka.Header{
+			{Key: retryCountKey, Value: []byte("1")},
+			{Key: isRetryableKey, Value: []byte{1}},
+		}
+		return true // Retryable olarak işaretlenmiş, retry yapılacak
+	}
+
+	isRetryable := false
+	retryCountIndex := -1
+
+	// Header'ları tarayarak isRetryable ve retryCount değerlerini kontrol et
+	for i, header := range message.Headers {
+		switch header.Key {
+		case isRetryableKey:
+			if string(header.Value) == "true" || (len(header.Value) == 1 && header.Value[0] == 1) {
+				isRetryable = true
+			}
+		case retryCountKey:
+			retryCountIndex = i
+		}
+	}
+
+	// Eğer isRetryable true ise ve retryCount varsa, retryCount'u artır
+	if isRetryable {
+		if retryCountIndex != -1 {
+			retryCount, _ := strconv.Atoi(string(message.Headers[retryCountIndex].Value))
+			message.Headers[retryCountIndex].Value = []byte(strconv.Itoa(retryCount + 1))
+		} else {
+			// retryCount header'ı yoksa, yeni bir retryCount ekle
+			message.Headers = append(message.Headers, kafka.Header{
+				Key:   retryCountKey,
+				Value: []byte("1"),
+			})
+		}
+		return true // Retryable olarak işaretlenmiş, retry yapılacak
+	}
+
+	// Eğer isRetryable değilse, direk dead topic'e gidecek
+	return false
+}
+
 func (kc *karacaConsumer) generateRetryTopicName(topicPrefix string) string {
 
 	return fmt.Sprintf("%s_%s_retry", topicPrefix, kc.Config.ConsumerConfig.AppName)
@@ -348,6 +457,97 @@ func prepareRetryMessage(message kafka.Message, retryCount int, err error, stack
 	headers = append(headers, kafka.Header{
 		Key:   "stackTracing",
 		Value: []byte(stackTracing),
+	})
+
+	return kafka.Message{
+		TopicPartition: kafka.TopicPartition{Topic: &topicName, Partition: kafka.PartitionAny},
+		Key:            message.Key,
+		Timestamp:      timeNow,
+		Headers:        headers,
+		Value:          message.Value,
+	}
+}
+
+func prepareKafkaMessage(
+	message kafka.Message,
+	retryCount int,
+	err error,
+	stackTracing string,
+	topicName string,
+	isRetryable bool,
+) kafka.Message {
+	var headers []kafka.Header
+
+	timeNow := time.Now().UTC()
+	timeStamp := timeNow.Format("01/02/2006 15:04:05")
+
+	headers = append(headers, kafka.Header{
+		Key:   "timeStamp",
+		Value: []byte(timeStamp),
+	})
+
+	headers = append(headers, kafka.Header{
+		Key:   "identityName",
+		Value: []byte(IdentityName(message.Headers)),
+	})
+
+	headers = append(headers, kafka.Header{
+		Key:   "identityType",
+		Value: []byte(IdentityType(message.Headers)),
+	})
+
+	headers = append(headers, kafka.Header{
+		Key:   "correlationId",
+		Value: []byte(CorrelationId(message.Headers)),
+	})
+
+	headers = append(headers, kafka.Header{
+		Key:   "userName",
+		Value: []byte(UserName(message.Headers)),
+	})
+
+	headers = append(headers, kafka.Header{
+		Key:   "type",
+		Value: []byte(EventType(message.Headers)),
+	})
+
+	headers = append(headers, kafka.Header{
+		Key:   "version",
+		Value: []byte(Version(message.Headers)),
+	})
+
+	headers = append(headers, kafka.Header{
+		Key:   "tenant",
+		Value: []byte(Tenant(message.Headers)),
+	})
+
+	headers = append(headers, kafka.Header{
+		Key:   "hash",
+		Value: []byte(Hash(message.Headers)),
+	})
+
+	headers = append(headers, kafka.Header{
+		Key:   "retryCount",
+		Value: []byte(strconv.Itoa(retryCount)),
+	})
+
+	if err != nil {
+		headers = append(headers, kafka.Header{
+			Key:   "error",
+			Value: []byte(err.Error()),
+		})
+	}
+
+	if stackTracing != "" {
+		headers = append(headers, kafka.Header{
+			Key:   "stackTracing",
+			Value: []byte(stackTracing),
+		})
+	}
+
+	headers = append(headers, kafka.Header{
+		Key:   "isRetryable",
+		Value: []byte(strconv.FormatBool(isRetryable)),
 	})
 
 	return kafka.Message{
