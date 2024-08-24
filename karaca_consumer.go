@@ -297,7 +297,7 @@ func HandleRetryOrDeadMessage(message *kafka.Message) bool {
 	for i, header := range message.Headers {
 		switch header.Key {
 		case isRetryableKey:
-			if string(header.Value) == "true" || (len(header.Value) == 1 && header.Value[0] == 1) {
+			if byteArrayToBool(header.Value) {
 				isRetryable = true
 			}
 		case retryCountKey:
@@ -426,6 +426,14 @@ func prepareKafkaMessage(
 		Headers:        headers,
 		Value:          message.Value,
 	}
+}
+
+func byteArrayToBool(b []byte) bool {
+	if len(b) == 0 {
+		return false
+	}
+	strValue := string(b)
+	return strValue == "true" || (len(b) == 1 && b[0] == 1)
 }
 
 func NewKafkaConsumer(ctx context.Context, config KaracaKafkaConfig) KaracaConsumer {

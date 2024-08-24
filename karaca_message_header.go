@@ -27,7 +27,7 @@ func mapHeaders(headers []kafka.Header) KaracaMessageHeader {
 		UserName:     UserName(headers),
 		TimeStamp:    timeStamp,
 		MessageType:  EventType(headers),
-		IsRetryable:  true,
+		IsRetryable:  IsRetryable(headers),
 	}
 }
 
@@ -45,6 +45,15 @@ func CorrelationId(headers []kafka.Header) string {
 
 func UserName(headers []kafka.Header) string {
 	return string(getHeaderValue(headers, "userName"))
+}
+
+func IsRetryable(headers []kafka.Header) bool {
+
+	value := getHeaderValue(headers, "isRetryable")
+	if len(value) == 0 {
+		return false
+	}
+	return value[0] == 1
 }
 
 func EventType(headers []kafka.Header) string {
@@ -79,50 +88,4 @@ func getHeaderValue(headers []kafka.Header, key string) []byte {
 		}
 	}
 	return []byte{}
-}
-
-func IncrementRetryCount(message *kafka.Message) {
-
-	const (
-		retryCountKey  = "retryCount"
-		isRetryableKey = "isRetryable"
-	)
-
-	// Eğer mesajda header yoksa, retryCount ve isRetryable header'larını ekle
-	if message.Headers == nil {
-		message.Headers = []kafka.Header{
-			{Key: retryCountKey, Value: []byte("1")},
-			{Key: isRetryableKey, Value: []byte{1}},
-		}
-		return
-	}
-
-	isRetryable := false
-	retryCountIndex := -1
-
-	// Header'ları tarayarak isRetryable ve retryCount değerlerini kontrol et
-	for i, header := range message.Headers {
-		switch header.Key {
-		case isRetryableKey:
-			if string(header.Value) == "true" || (len(header.Value) == 1 && header.Value[0] == 1) {
-				isRetryable = true
-			}
-		case retryCountKey:
-			retryCountIndex = i
-		}
-	}
-
-	// Eğer isRetryable true ise ve retryCount varsa, retryCount'u artır
-	if isRetryable {
-		if retryCountIndex != -1 {
-			retryCount, _ := strconv.Atoi(string(message.Headers[retryCountIndex].Value))
-			message.Headers[retryCountIndex].Value = []byte(strconv.Itoa(retryCount + 1))
-		} else {
-			// retryCount header'ı yoksa, yeni bir retryCount ekle
-			message.Headers = append(message.Headers, kafka.Header{
-				Key:   retryCountKey,
-				Value: []byte("1"),
-			})
-		}
-	}
 }
