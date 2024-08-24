@@ -164,10 +164,7 @@ func (kc *karacaConsumer) subscribeToTopics() error {
 }
 
 func (kc *karacaConsumer) messageHandler(message *kafka.Message) {
-
-	var (
-		err error
-	)
+	var err error
 
 	timeStamp, _ := time.Parse("01/02/2006 15:04:05", TimeStamp(message.Headers))
 
@@ -196,15 +193,21 @@ func (kc *karacaConsumer) messageHandler(message *kafka.Message) {
 		Headers:       mapHeaders(message.Headers),
 	}
 
-	// Handler fonksiyonunu çağırın
-	err = kc.MessageHandler(karacaMsg)
+	// kc.MessageHandler'ı try-catch (panic-recover) ile sarmalayın
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				err = fmt.Errorf("recovered from panic: %v", r)
+			}
+		}()
+		err = kc.MessageHandler(karacaMsg)
+	}()
 
 	if err != nil {
 		// KaracaMessage'dan güncellenmiş header'ları Kafka Message'a geri yazma
-		//todo: refactor here
-		for _, header := range message.Headers {
+		for i, header := range message.Headers {
 			if header.Key == "isRetryable" {
-				header.Value = []byte(karacaMsg.Headers.IsRetryable)
+				message.Headers[i].Value = []byte(karacaMsg.Headers.IsRetryable)
 			}
 		}
 		panic(err)
