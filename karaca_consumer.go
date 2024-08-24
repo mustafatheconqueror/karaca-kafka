@@ -173,7 +173,6 @@ func (kc *karacaConsumer) messageHandler(message *kafka.Message) {
 
 	defer func() {
 		if r := recover(); r != nil {
-
 			// Retry veya Dead Topic durumu belirlenir
 			if shouldRetry := HandleRetryOrDeadMessage(message); shouldRetry {
 				// Error Topic'e gönder
@@ -187,16 +186,27 @@ func (kc *karacaConsumer) messageHandler(message *kafka.Message) {
 		}
 	}()
 
-	err = kc.MessageHandler(KaracaMessage{
+	// KaracaMessage oluşturma ve işleme
+	karacaMsg := KaracaMessage{
 		CorrelationId: CorrelationId(message.Headers),
 		Timestamp:     timeStamp,
 		Payload:       message.Value,
 		Topic:         *message.TopicPartition.Topic,
 		Partition:     int(message.TopicPartition.Partition),
 		Headers:       mapHeaders(message.Headers),
-	})
+	}
+
+	// Handler fonksiyonunu çağırın
+	err = kc.MessageHandler(karacaMsg)
 
 	if err != nil {
+		// KaracaMessage'dan güncellenmiş header'ları Kafka Message'a geri yazma
+		//todo: refactor here
+		for _, header := range message.Headers {
+			if header.Key == "isRetryable" {
+				header.Value = []byte(karacaMsg.Headers.IsRetryable)
+			}
+		}
 		panic(err)
 	}
 
