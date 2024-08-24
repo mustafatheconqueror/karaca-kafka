@@ -16,11 +16,11 @@ type KaracaMessageHeader struct {
 	IsRetryable  string
 }
 
-func mapHeaders(headers []kafka.Header) KaracaMessageHeader {
+func mapHeaders(headers []kafka.Header) *KaracaMessageHeader {
 	version, _ := strconv.Atoi(Version(headers))
 	timeStamp, _ := time.Parse("01/02/2006 15:04:05", TimeStamp(headers))
 
-	return KaracaMessageHeader{
+	return &KaracaMessageHeader{ // Pointer olarak döndür
 		IdentityName: IdentityName(headers),
 		IdentityType: IdentityType(headers),
 		Version:      version,
