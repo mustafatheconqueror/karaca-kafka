@@ -13,7 +13,7 @@ type KaracaMessageHeader struct {
 	IdentityType string
 	Version      int
 	MessageType  string
-	IsRetryable  bool
+	IsRetryable  string
 }
 
 func mapHeaders(headers []kafka.Header) KaracaMessageHeader {
@@ -47,8 +47,8 @@ func UserName(headers []kafka.Header) string {
 	return string(getHeaderValue(headers, "userName"))
 }
 
-func IsRetryable(headers []kafka.Header) bool {
-	return byteArrayToBool(getHeaderValue(headers, "isRetryable"))
+func IsRetryable(headers []kafka.Header) string {
+	return string(getHeaderValue(headers, "isRetryable"))
 }
 
 func EventType(headers []kafka.Header) string {
