@@ -27,7 +27,6 @@ type KaracaConsumer interface {
 	messageHandler(message *kafka.Message)
 	close()
 	markAsClosed()
-	publishMessageToErrorTopic(ctx context.Context, message kafka.Message, r any, errorTopicName string)
 	PublishMessageToTopic(message kafka.Message, r any, topicName string, isErrorTopic bool)
 }
 
@@ -222,61 +221,6 @@ func (kc *karacaConsumer) markAsClosed() {
 	log.Printf("%s consumer marked as closed", kc.Config.ConsumerConfig.AppName)
 }
 
-func (kc *karacaConsumer) publishMessageToErrorTopic(
-	ctx context.Context,
-	message kafka.Message,
-	r any,
-	errorTopicName string) {
-
-	var (
-		ok           bool
-		err          error
-		kafkaMessage *kafka.Message
-	)
-
-	deliveryChan := make(chan kafka.Event)
-	err, ok = r.(error)
-
-	if !ok {
-		err = fmt.Errorf("%v", r)
-	}
-
-	stack := make([]byte, 4<<10)
-	length := runtime.Stack(stack, false)
-	retryCount := RetryCount(message.Headers)
-
-	retryMessage := prepareRetryMessage(message, retryCount, err,
-		fmt.Sprintf("[Exception Recover] %v %s\n", err, stack[:length]), errorTopicName)
-
-	for kafkaMessage == nil || kafkaMessage.TopicPartition.Error != nil {
-		if kafkaMessage != nil && kafkaMessage.TopicPartition.Error != nil {
-			log.Printf("Error occurred when producing dead message: %v", kafkaMessage.TopicPartition.Error)
-			time.Sleep(5 * time.Second)
-		}
-
-		for err = kc.Producer.Produce(&retryMessage, deliveryChan); err != nil; {
-			log.Printf("Error occurred when producing dead message: %v", err)
-			time.Sleep(5 * time.Second)
-		}
-
-		log.Printf("producer.Produce executed for CorrelationId: %s", CorrelationId(message.Headers))
-
-		e := <-deliveryChan
-		kafkaMessage = e.(*kafka.Message)
-
-		log.Printf("deliveryChan executed for CorrelationId: %s", CorrelationId(message.Headers))
-	}
-
-	close(deliveryChan)
-
-	for _, err = kc.Consumer.CommitMessage(&message); err != nil; {
-		log.Printf("Error occurred when committing message: %v", err)
-		time.Sleep(5 * time.Second)
-	}
-
-	log.Printf("CommitMessage executed for CorrelationId: %s", CorrelationId(message.Headers))
-}
-
 func (kc *karacaConsumer) PublishMessageToTopic(message kafka.Message, r any, topicName string, isErrorTopic bool) {
 	var (
 		err          error
@@ -391,81 +335,6 @@ func (kc *karacaConsumer) generateErrorTopicName(topicPrefix string) string {
 
 func (kc *karacaConsumer) generateDeadTopicName(topicPrefix string) string {
 	return fmt.Sprintf("%s_%s_dead", topicPrefix, kc.Config.ConsumerConfig.AppName)
-}
-
-func prepareRetryMessage(message kafka.Message, retryCount int, err error, stackTracing string, topicName string) kafka.Message {
-	var headers []kafka.Header
-
-	timeNow := time.Now().UTC()
-	timeStamp := timeNow.Format("01/02/2006 15:04:05")
-
-	headers = append(headers, kafka.Header{
-		Key:   "timeStamp",
-		Value: []byte(timeStamp),
-	})
-
-	headers = append(headers, kafka.Header{
-		Key:   "identityName",
-		Value: []byte(IdentityName(message.Headers)),
-	})
-
-	headers = append(headers, kafka.Header{
-		Key:   "identityType",
-		Value: []byte(IdentityType(message.Headers)),
-	})
-
-	headers = append(headers, kafka.Header{
-		Key:   "correlationId",
-		Value: []byte(CorrelationId(message.Headers)),
-	})
-
-	headers = append(headers, kafka.Header{
-		Key:   "userName",
-		Value: []byte(UserName(message.Headers)),
-	})
-
-	headers = append(headers, kafka.Header{
-		Key:   "type",
-		Value: []byte(EventType(message.Headers)),
-	})
-
-	headers = append(headers, kafka.Header{
-		Key:   "version",
-		Value: []byte(Version(message.Headers)),
-	})
-
-	headers = append(headers, kafka.Header{
-		Key:   "tenant",
-		Value: []byte(Tenant(message.Headers)),
-	})
-
-	headers = append(headers, kafka.Header{
-		Key:   "hash",
-		Value: []byte(Hash(message.Headers)),
-	})
-
-	headers = append(headers, kafka.Header{
-		Key:   "retryCount",
-		Value: []byte(strconv.Itoa(retryCount)),
-	})
-
-	headers = append(headers, kafka.Header{
-		Key:   "error",
-		Value: []byte(err.Error()),
-	})
-
-	headers = append(headers, kafka.Header{
-		Key:   "stackTracing",
-		Value: []byte(stackTracing),
-	})
-
-	return kafka.Message{
-		TopicPartition: kafka.TopicPartition{Topic: &topicName, Partition: kafka.PartitionAny},
-		Key:            message.Key,
-		Timestamp:      timeNow,
-		Headers:        headers,
-		Value:          message.Value,
-	}
 }
 
 func prepareKafkaMessage(

@@ -27,6 +27,7 @@ func mapHeaders(headers []kafka.Header) KaracaMessageHeader {
 		UserName:     UserName(headers),
 		TimeStamp:    timeStamp,
 		MessageType:  EventType(headers),
+		IsRetryable:  true,
 	}
 }
 
