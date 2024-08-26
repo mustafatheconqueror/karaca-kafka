@@ -292,19 +292,21 @@ func HandleRetryOrDeadMessage(message *kafka.Message) bool {
 	const (
 		retryCountKey  = "retryCount"
 		isRetryableKey = "isRetryable"
+		maxRetryCount  = 6
 	)
 
 	// Eğer mesajda header yoksa, retryCount ve isRetryable header'larını ekle
 	if message.Headers == nil {
 		message.Headers = []kafka.Header{
 			{Key: retryCountKey, Value: []byte("1")},
-			{Key: isRetryableKey, Value: []byte{1}},
+			{Key: isRetryableKey, Value: []byte("true")},
 		}
 		return true // Retryable olarak işaretlenmiş, retry yapılacak
 	}
 
 	isRetryable := false
 	retryCountIndex := -1
+	retryCount := 0
 
 	// Header'ları tarayarak isRetryable ve retryCount değerlerini kontrol et
 	for i, header := range message.Headers {
@@ -315,13 +317,18 @@ func HandleRetryOrDeadMessage(message *kafka.Message) bool {
 			}
 		case retryCountKey:
 			retryCountIndex = i
+			retryCount, _ = strconv.Atoi(string(header.Value))
 		}
 	}
 
 	// Eğer isRetryable true ise ve retryCount varsa, retryCount'u artır
 	if isRetryable {
+		if retryCount >= maxRetryCount {
+			return false // Max retry count'a ulaşıldı, dead topic'e gönderilecek
+		}
+
 		if retryCountIndex != -1 {
-			retryCount, _ := strconv.Atoi(string(message.Headers[retryCountIndex].Value))
+			// retryCount'u artır
 			message.Headers[retryCountIndex].Value = []byte(strconv.Itoa(retryCount + 1))
 		} else {
 			// retryCount header'ı yoksa, yeni bir retryCount ekle
