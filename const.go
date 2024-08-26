@@ -25,7 +25,7 @@ const (
 
 	RetryTopicPartitionCount    = 3
 	RetryTopicReplicationFactor = 3
-	RetryTopicRetention         = RetentionOneWeek
+	RetryTopicRetention         = RetentionOneMinute * 2
 
 	ErrorTopicPartitionCount    = 3
 	ErrorTopicReplicationFactor = 3
@@ -33,11 +33,12 @@ const (
 
 	DeadTopicPartitionCount    = 3
 	DeadTopicReplicationFactor = 3
-	DeadTopicRetention         = RetentionOneWeek
+	DeadTopicRetention         = RetentionOneMonth
 
-	RetentionOneDay   = 86400000
-	RetentionOneWeek  = RetentionOneDay * 7
-	RetentionOneMonth = RetentionOneWeek * 30
+	RetentionOneDay    = 86400000
+	RetentionOneMinute = 6000
+	RetentionOneWeek   = RetentionOneDay * 7
+	RetentionOneMonth  = RetentionOneWeek * 30
 
 	MinInSyncReplicas = "2"
 )
